@@ -26,6 +26,88 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## GraphQL realtime chess API (added)
+
+- HTTP GraphQL endpoint: `http://localhost:3001/graphql`
+- WebSocket subscriptions endpoint: `ws://localhost:3001/graphql` (protocol: `graphql-transport-ws`)
+- Storage: in-memory (no DB yet)
+- Auth: none (client provides a `playerId` placeholder)
+
+### Run
+
+```bash
+npm install
+npm run start:dev
+```
+
+Default port is `3001` (configurable via `PORT`).
+
+### Sample operations
+
+Create a game:
+
+```graphql
+mutation CreateGame {
+  createGame(input: { playerId: "p1", name: "Alice", timeLimitSeconds: 300 }) {
+    id
+    status
+    turnColor
+    state { hasGameEnded players { id name color isPlaying } }
+  }
+}
+```
+
+Join a game:
+
+```graphql
+mutation JoinGame($gameId: ID!) {
+  joinGame(gameId: $gameId, input: { playerId: "p2", name: "Bob" }) {
+    id
+    status
+    turnColor
+  }
+}
+```
+
+Make a move (coordinates are `{ vertical: 0..7, horizontal: 0..7 }`):
+
+```graphql
+mutation MakeMove($gameId: ID!) {
+  makeMove(
+    gameId: $gameId
+    input: {
+      playerId: "p1"
+      from: { vertical: 1, horizontal: 4 }
+      to: { vertical: 3, horizontal: 4 }
+    }
+  ) {
+    turnColor
+    state { hasGameEnded }
+  }
+}
+```
+
+Subscribe to per-game events:
+
+```graphql
+subscription GameEvents($gameId: ID!) {
+  gameEvents(gameId: $gameId) {
+    type
+    at
+    move { byPlayerId from { vertical horizontal } to { vertical horizontal } }
+    game { id status turnColor }
+  }
+}
+```
+
+### Event semantics
+
+- `PLAYER_JOINED`: emitted on `createGame` and `joinGame`
+- `PLAYER_LEFT`: emitted on `leaveGame`
+- `MOVE_PLAYED`: emitted after a successful `makeMove`
+- `GAME_STARTED`: emitted when the 2nd player joins
+- `GAME_ENDED`: emitted when the server detects checkmate/stalemate
+
 ## Project setup
 
 ```bash

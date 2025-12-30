@@ -1,0 +1,146 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+enum Color {
+  BLACK
+  WHITE
+}
+
+input CreateGameInput {
+  name: String
+  playerId: ID!
+
+  """Client-side only for now."""
+  timeLimitSeconds: Int
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Game {
+  boardFen: String
+  createdAt: DateTime!
+  id: ID!
+  players: [Player!]!
+  state: GameState!
+  status: GameStatus!
+  turnColor: Color!
+  updatedAt: DateTime!
+}
+
+type GameEvent {
+  at: DateTime!
+  game: Game!
+  gameId: ID!
+  move: Move
+  player: Player
+  type: GameEventType!
+}
+
+enum GameEventType {
+  GAME_ENDED
+  GAME_STARTED
+  MOVE_PLAYED
+  PLAYER_JOINED
+  PLAYER_LEFT
+}
+
+type GameOverReason {
+  agreement: Boolean
+  checkmate: Boolean
+  draw: Boolean
+  insufficientMaterial: Boolean
+  repetition: Boolean
+  resign: Boolean
+  stalemate: Boolean
+  timeout: Boolean
+}
+
+type GameState {
+  hasGameEnded: Boolean!
+  players: [Player!]!
+  reason: GameOverReason!
+  winner: Player
+}
+
+enum GameStatus {
+  ENDED
+  IN_PROGRESS
+  WAITING_FOR_PLAYERS
+}
+
+input JoinGameInput {
+  name: String
+  playerId: ID!
+}
+
+input LeaveGameInput {
+  playerId: ID!
+}
+
+type Move {
+  byPlayerId: ID!
+  from: Position!
+  playedAt: DateTime!
+  promotion: String
+  to: Position!
+}
+
+input MoveInput {
+  from: PositionInput!
+  playerId: ID!
+  promotion: String
+  to: PositionInput!
+}
+
+type Mutation {
+  createGame(input: CreateGameInput!): Game!
+  joinGame(gameId: ID!, input: JoinGameInput!): Game!
+  leaveGame(gameId: ID!, input: LeaveGameInput!): Game!
+  makeMove(gameId: ID!, input: MoveInput!): Game!
+}
+
+type Piece {
+  color: Color!
+  doubleJump: Boolean
+  id: String!
+  isAlive: Boolean!
+  isChecked: Boolean
+  isFirstMove: Boolean
+  name: String!
+  position: Position!
+  value: Int
+}
+
+type Player {
+  askedDraw: Boolean!
+  color: Color!
+  eatenPieces: [Piece!]!
+  id: ID!
+  isPlaying: Boolean!
+  name: String!
+  pieces: [Piece!]!
+  score: Int!
+  time: Int!
+}
+
+type Position {
+  horizontal: Int!
+  vertical: Int!
+}
+
+input PositionInput {
+  horizontal: Int!
+  vertical: Int!
+}
+
+type Query {
+  game(gameId: ID!): Game!
+}
+
+type Subscription {
+  gameEvents(gameId: ID!): GameEvent!
+}
