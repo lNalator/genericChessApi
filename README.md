@@ -31,7 +31,7 @@
 - HTTP GraphQL endpoint: `http://localhost:3001/graphql`
 - WebSocket subscriptions endpoint: `ws://localhost:3001/graphql` (protocol: `graphql-transport-ws`)
 - Storage: in-memory (no DB yet)
-- Auth: none (client provides a `playerId` placeholder)
+- Auth: none (client provides a stable `clientId` stored in localStorage)
 
 ### Run
 
@@ -44,27 +44,28 @@ Default port is `3001` (configurable via `PORT`).
 
 ### Sample operations
 
-Create a game:
+Create an invite game (returns a 7-char code):
 
 ```graphql
-mutation CreateGame {
-  createGame(input: { playerId: "p1", name: "Alice", timeLimitSeconds: 300 }) {
-    id
-    status
-    turnColor
-    state { hasGameEnded players { id name color isPlaying } }
+mutation CreateInviteGame {
+  createInviteGame(
+    input: { clientId: "c1", name: "Alice", timeControl: { initialSeconds: 300 } }
+  ) {
+    gameId
+    code
+    playerColor
+    game { id code status turnColor timeControl { initialSeconds incrementSeconds } }
   }
 }
 ```
 
-Join a game:
+Join by code:
 
 ```graphql
-mutation JoinGame($gameId: ID!) {
-  joinGame(gameId: $gameId, input: { playerId: "p2", name: "Bob" }) {
-    id
-    status
-    turnColor
+mutation JoinInviteGame($code: String!) {
+  joinInviteGame(input: { clientId: "c2", name: "Bob", code: $code }) {
+    gameId
+    playerColor
   }
 }
 ```
@@ -73,16 +74,16 @@ Make a move (coordinates are `{ vertical: 0..7, horizontal: 0..7 }`):
 
 ```graphql
 mutation MakeMove($gameId: ID!) {
-  makeMove(
+  makeMove(input: {
+    clientId: "c1"
     gameId: $gameId
-    input: {
-      playerId: "p1"
-      from: { vertical: 1, horizontal: 4 }
-      to: { vertical: 3, horizontal: 4 }
-    }
-  ) {
+    from: { vertical: 1, horizontal: 4 }
+    to: { vertical: 3, horizontal: 4 }
+  }) {
+    id
     turnColor
-    state { hasGameEnded }
+    timeControl { initialSeconds incrementSeconds }
+    state { hasGameEnded players { id color time isPlaying } }
   }
 }
 ```
@@ -90,11 +91,26 @@ mutation MakeMove($gameId: ID!) {
 Subscribe to per-game events:
 
 ```graphql
-subscription GameEvents($gameId: ID!) {
-  gameEvents(gameId: $gameId) {
+subscription GameEvents($gameId: ID!, $clientId: ID!) {
+  gameEvents(gameId: $gameId, clientId: $clientId) {
     type
     at
+    message
     move { byPlayerId from { vertical horizontal } to { vertical horizontal } }
+    game { id code status turnColor timeControl { initialSeconds incrementSeconds } }
+  }
+}
+```
+
+Subscribe to matchmaking events:
+
+```graphql
+subscription MatchmakingEvents($clientId: ID!) {
+  matchmakingEvents(clientId: $clientId) {
+    type
+    at
+    gameId
+    playerColor
     game { id status turnColor }
   }
 }
@@ -102,11 +118,13 @@ subscription GameEvents($gameId: ID!) {
 
 ### Event semantics
 
-- `PLAYER_JOINED`: emitted on `createGame` and `joinGame`
-- `PLAYER_LEFT`: emitted on `leaveGame`
+- `CLOCK_TICK`: emitted periodically during active games (authoritative timers)
+- `PLAYER_JOINED`: emitted on invite create/join
+- `PLAYER_QUIT`: emitted on `quitGame`
 - `MOVE_PLAYED`: emitted after a successful `makeMove`
-- `GAME_STARTED`: emitted when the 2nd player joins
-- `GAME_ENDED`: emitted when the server detects checkmate/stalemate
+- `GAME_STARTED`: emitted when the 2nd player joins an invite game
+- `GAME_ENDED`: emitted on checkmate/stalemate/timeout/opponentQuit
+- `REMATCH_*`: negotiation + restart events (colors swapped on `REMATCH_STARTED`)
 
 ## Project setup
 

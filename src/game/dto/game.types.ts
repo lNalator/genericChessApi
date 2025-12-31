@@ -4,6 +4,24 @@ import { ColorEnum } from '../engine/enums/color.enum';
 
 registerEnumType(ColorEnum, { name: 'Color' });
 
+@ObjectType()
+export class TimeControl {
+  @Field(() => Int)
+  initialSeconds!: number;
+
+  @Field(() => Int, { nullable: true })
+  incrementSeconds?: number | null;
+}
+
+@InputType()
+export class TimeControlInput {
+  @Field(() => Int)
+  initialSeconds!: number;
+
+  @Field(() => Int, { nullable: true })
+  incrementSeconds?: number | null;
+}
+
 export enum GameStatus {
   WAITING_FOR_PLAYERS = 'WAITING_FOR_PLAYERS',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -115,6 +133,9 @@ export class GameOverReason {
 
   @Field({ nullable: true })
   agreement?: boolean;
+
+  @Field({ nullable: true })
+  opponentQuit?: boolean;
 }
 
 @ObjectType()
@@ -137,6 +158,9 @@ export class Game {
   @Field(() => ID)
   id!: string;
 
+  @Field(() => String, { nullable: true })
+  code?: string | null;
+
   @Field(() => GameStatus)
   status!: GameStatus;
 
@@ -148,6 +172,9 @@ export class Game {
 
   @Field(() => ColorEnum)
   turnColor!: ColorEnum;
+
+  @Field(() => TimeControl)
+  timeControl!: TimeControl;
 
   @Field(() => GraphQLISODateTime)
   createdAt!: Date;
@@ -162,9 +189,15 @@ export class Game {
 export enum GameEventType {
   PLAYER_JOINED = 'PLAYER_JOINED',
   PLAYER_LEFT = 'PLAYER_LEFT',
+  PLAYER_QUIT = 'PLAYER_QUIT',
   MOVE_PLAYED = 'MOVE_PLAYED',
+  CLOCK_TICK = 'CLOCK_TICK',
   GAME_STARTED = 'GAME_STARTED',
   GAME_ENDED = 'GAME_ENDED',
+  REMATCH_REQUESTED = 'REMATCH_REQUESTED',
+  REMATCH_ACCEPTED = 'REMATCH_ACCEPTED',
+  REMATCH_DECLINED = 'REMATCH_DECLINED',
+  REMATCH_STARTED = 'REMATCH_STARTED',
 }
 
 registerEnumType(GameEventType, { name: 'GameEventType' });
@@ -206,5 +239,72 @@ export class GameEvent {
 
   @Field(() => Player, { nullable: true })
   player?: Player;
+
+  @Field({ nullable: true })
+  message?: string;
 }
 
+@ObjectType()
+export class GameSession {
+  @Field(() => ID)
+  gameId!: string;
+
+  @Field(() => String, { nullable: true })
+  code?: string | null;
+
+  @Field(() => ColorEnum)
+  playerColor!: ColorEnum;
+
+  @Field(() => Game)
+  game!: Game;
+}
+
+export enum MatchmakingEventType {
+  ENQUEUED = 'ENQUEUED',
+  DEQUEUED = 'DEQUEUED',
+  MATCH_FOUND = 'MATCH_FOUND',
+}
+
+registerEnumType(MatchmakingEventType, { name: 'MatchmakingEventType' });
+
+@ObjectType()
+export class MatchmakingEvent {
+  @Field(() => MatchmakingEventType)
+  type!: MatchmakingEventType;
+
+  @Field(() => GraphQLISODateTime)
+  at!: Date;
+
+  @Field(() => ID)
+  clientId!: string;
+
+  @Field(() => ID, { nullable: true })
+  gameId?: string | null;
+
+  @Field(() => ColorEnum, { nullable: true })
+  playerColor?: ColorEnum | null;
+
+  @Field(() => Game, { nullable: true })
+  game?: Game | null;
+
+  @Field({ nullable: true })
+  message?: string;
+}
+
+@ObjectType()
+export class OkResponse {
+  @Field()
+  ok!: boolean;
+}
+
+@ObjectType()
+export class EnqueueMatchmakingResponse {
+  @Field()
+  enqueued!: boolean;
+}
+
+@ObjectType()
+export class DequeueMatchmakingResponse {
+  @Field()
+  dequeued!: boolean;
+}
