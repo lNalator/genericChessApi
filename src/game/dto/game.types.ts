@@ -176,6 +176,15 @@ export class Game {
   @Field(() => TimeControl)
   timeControl!: TimeControl;
 
+  @Field(() => Int)
+  disconnectGraceSeconds!: number;
+
+  @Field(() => ID, { nullable: true })
+  disconnectingClientId?: string | null;
+
+  @Field(() => GraphQLISODateTime, { nullable: true })
+  disconnectDeadlineAt?: Date | null;
+
   @Field(() => GraphQLISODateTime)
   createdAt!: Date;
 
@@ -190,6 +199,8 @@ export enum GameEventType {
   PLAYER_JOINED = 'PLAYER_JOINED',
   PLAYER_LEFT = 'PLAYER_LEFT',
   PLAYER_QUIT = 'PLAYER_QUIT',
+  PLAYER_DISCONNECTED = 'PLAYER_DISCONNECTED',
+  PLAYER_RECONNECTED = 'PLAYER_RECONNECTED',
   MOVE_PLAYED = 'MOVE_PLAYED',
   CLOCK_TICK = 'CLOCK_TICK',
   GAME_STARTED = 'GAME_STARTED',
@@ -242,6 +253,12 @@ export class GameEvent {
 
   @Field({ nullable: true })
   message?: string;
+
+  @Field(() => Int, { nullable: true })
+  graceSeconds?: number;
+
+  @Field(() => GraphQLISODateTime, { nullable: true })
+  deadlineAt?: Date;
 }
 
 @ObjectType()

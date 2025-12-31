@@ -65,6 +65,13 @@ type GameDomain = {
     requestedBy: Set<string>;
     acceptedBy: Set<string>;
   };
+  disconnect: Map<
+    string,
+    {
+      deadlineMs: number;
+      timer: NodeJS.Timeout;
+    }
+  >;
 };
 
 type MatchmakingEntry = {
@@ -81,6 +88,12 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
   private readonly codeToGameId = new Map<string, string>();
   private readonly queue: MatchmakingEntry[] = [];
   private tickInterval: NodeJS.Timeout | null = null;
+  private readonly disconnectGraceSeconds = (() => {
+    const raw = process.env.DISCONNECT_GRACE_SECONDS;
+    const parsed = raw ? Number(raw) : 15;
+    if (!Number.isFinite(parsed)) return 15;
+    return Math.max(1, Math.min(15, Math.floor(parsed)));
+  })();
 
   constructor(private readonly pubSub: PubSub) {}
 
@@ -106,6 +119,38 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
   onModuleDestroy() {
     if (this.tickInterval) clearInterval(this.tickInterval);
     this.tickInterval = null;
+    for (const game of this.games.values()) {
+      for (const entry of game.disconnect.values()) {
+        clearTimeout(entry.timer);
+      }
+      game.disconnect.clear();
+    }
+  }
+
+  handleClientConnected(clientId: string) {
+    const game = this.findActiveGameByClientId(clientId);
+    if (!game) return;
+    const pending = game.disconnect.get(clientId);
+    if (!pending) return;
+
+    clearTimeout(pending.timer);
+    game.disconnect.delete(clientId);
+
+    const gql = this.toGraphQL(game);
+    this.publishGameEvent({
+      type: GameEventType.PLAYER_RECONNECTED,
+      gameId: game.id,
+      at: new Date(),
+      game: gql,
+      player: gql.players.find((p) => p.id === clientId),
+      message: 'Player reconnected',
+    });
+  }
+
+  handleClientDisconnected(clientId: string) {
+    const game = this.findActiveGameByClientId(clientId);
+    if (!game) return;
+    this.startDisconnectGrace(game, clientId, 'Disconnected');
   }
 
   createInviteGame(input: CreateInviteGameInput): GameSession {
@@ -194,11 +239,21 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  isClientInGame(gameId: string, clientId: string): boolean {
+    const game = this.games.get(gameId);
+    if (!game) return false;
+    return game.players.some((p) => p.id === clientId);
+  }
+
   getGameSession(gameId: string, clientId: string): GameSession {
     const game = this.games.get(gameId);
     if (!game) throw new NotFoundException('Game not found');
     const player = game.players.find((p) => p.id === clientId);
     if (!player) throw new BadRequestException('Not a player of this game');
+
+    if (game.disconnect.has(clientId)) {
+      this.handleClientConnected(clientId);
+    }
 
     if (game.status === GameStatus.IN_PROGRESS && !game.hasGameEnded) {
       this.applyClockDelta(game, Date.now());
@@ -342,6 +397,10 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    if (game.status === GameStatus.ENDED) {
+      this.clearDisconnectTimers(game);
+    }
+
     PlayerHelper.switchPlayerTurn(game.players);
     game.clock.lastTickMs = Date.now();
     game.updatedAt = new Date();
@@ -447,47 +506,13 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     const quitter = game.players.find((p) => p.id === input.clientId);
     if (!quitter) return { ok: true };
 
-    const now = new Date();
-
     if (game.status === GameStatus.WAITING_FOR_PLAYERS) {
       if (game.code) this.codeToGameId.delete(game.code);
       this.games.delete(game.id);
-      this.publishGameEvent({
-        type: GameEventType.PLAYER_QUIT,
-        gameId: game.id,
-        at: now,
-        game: this.toGraphQL(game),
-        player: { ...(quitter as any) },
-        message: 'Host quit',
-      });
       return { ok: true };
     }
 
-    if (!game.hasGameEnded) {
-      const opponent = game.players.find((p) => p.id !== input.clientId && p.id !== 'OPEN');
-      game.hasGameEnded = true;
-      game.status = GameStatus.ENDED;
-      game.reason = { opponentQuit: true };
-      game.winner = opponent ?? null;
-      game.updatedAt = now;
-    }
-
-    const gql = this.toGraphQL(game);
-    this.publishGameEvent({
-      type: GameEventType.PLAYER_QUIT,
-      gameId: game.id,
-      at: now,
-      game: gql,
-      player: gql.players.find((p) => p.id === input.clientId),
-      message: 'Player quit',
-    });
-    this.publishGameEvent({
-      type: GameEventType.GAME_ENDED,
-      gameId: game.id,
-      at: now,
-      game: gql,
-    });
-
+    this.startDisconnectGrace(game, input.clientId, 'Quit');
     return { ok: true };
   }
 
@@ -562,6 +587,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     game.clock.lastTickMs = now;
     game.rematch.requestedBy.clear();
     game.rematch.acceptedBy.clear();
+    this.clearDisconnectTimers(game);
 
     const gql = this.toGraphQL(game);
     this.publishGameEvent({
@@ -635,6 +661,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
         requestedBy: new Set<string>(),
         acceptedBy: new Set<string>(),
       },
+      disconnect: new Map(),
     };
 
     return { game, playerColor: ColorEnum.WHITE };
@@ -663,6 +690,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
       game.status = GameStatus.ENDED;
       game.reason = { timeout: true };
       game.winner = opponent ?? null;
+      this.clearDisconnectTimers(game);
 
       const gql = this.toGraphQL(game);
       this.publishGameEvent({
@@ -675,6 +703,13 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
     }
 
     return true;
+  }
+
+  private clearDisconnectTimers(game: GameDomain) {
+    for (const entry of game.disconnect.values()) {
+      clearTimeout(entry.timer);
+    }
+    game.disconnect.clear();
   }
 
   private syncClockIntoPlayers(game: GameDomain) {
@@ -699,6 +734,7 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
       initialSeconds: game.timeControl.initialSeconds,
       incrementSeconds: game.timeControl.incrementSeconds,
     };
+    const firstDisconnect = [...game.disconnect.entries()][0];
     return {
       id: game.id,
       code: game.code,
@@ -707,6 +743,9 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
       boardFen: null,
       turnColor: playingPlayer.color as ColorEnum,
       timeControl: tc,
+      disconnectGraceSeconds: this.disconnectGraceSeconds,
+      disconnectingClientId: firstDisconnect ? firstDisconnect[0] : null,
+      disconnectDeadlineAt: firstDisconnect ? new Date(firstDisconnect[1].deadlineMs) : null,
       createdAt: game.createdAt,
       updatedAt: game.updatedAt,
       state: {
@@ -716,5 +755,62 @@ export class GameService implements OnModuleInit, OnModuleDestroy {
         reason: game.reason as any,
       },
     };
+  }
+
+  private startDisconnectGrace(game: GameDomain, clientId: string, label: string) {
+    if (game.status !== GameStatus.IN_PROGRESS || game.hasGameEnded) return;
+    const player = game.players.find((p) => p.id === clientId);
+    if (!player) return;
+    if (game.disconnect.has(clientId)) return;
+
+    const nowMs = Date.now();
+    const deadlineMs = nowMs + this.disconnectGraceSeconds * 1000;
+
+    const timer = setTimeout(() => {
+      const current = this.games.get(game.id);
+      if (!current || current.hasGameEnded) return;
+      const stillPending = current.disconnect.get(clientId);
+      if (!stillPending) return;
+
+      const opponent = current.players.find((p) => p.id !== clientId && p.id !== 'OPEN') ?? null;
+      current.hasGameEnded = true;
+      current.status = GameStatus.ENDED;
+      current.reason = { resign: true, opponentQuit: true };
+      current.winner = opponent;
+      current.updatedAt = new Date();
+      current.disconnect.delete(clientId);
+
+      const gql = this.toGraphQL(current);
+      this.publishGameEvent({
+        type: GameEventType.GAME_ENDED,
+        gameId: current.id,
+        at: new Date(),
+        game: gql,
+        message: 'Disconnected resigned',
+      });
+    }, this.disconnectGraceSeconds * 1000);
+
+    game.disconnect.set(clientId, { deadlineMs, timer });
+
+    const gql = this.toGraphQL(game);
+    this.publishGameEvent({
+      type: GameEventType.PLAYER_DISCONNECTED,
+      gameId: game.id,
+      at: new Date(nowMs),
+      game: gql,
+      player: gql.players.find((p) => p.id === clientId),
+      message: `${label} (grace started)`,
+      graceSeconds: this.disconnectGraceSeconds,
+      deadlineAt: new Date(deadlineMs),
+    });
+  }
+
+  private findActiveGameByClientId(clientId: string): GameDomain | null {
+    for (const game of this.games.values()) {
+      if (game.hasGameEnded) continue;
+      if (game.status !== GameStatus.IN_PROGRESS) continue;
+      if (game.players.some((p) => p.id === clientId)) return game;
+    }
+    return null;
   }
 }

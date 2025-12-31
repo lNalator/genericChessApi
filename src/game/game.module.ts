@@ -12,6 +12,6 @@ import { GameService } from './game.service';
       useValue: new PubSub(),
     },
   ],
+  exports: [GameService],
 })
 export class GameModule {}
-

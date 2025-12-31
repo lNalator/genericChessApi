@@ -40,6 +40,9 @@ type Game {
   boardFen: String
   code: String
   createdAt: DateTime!
+  disconnectDeadlineAt: DateTime
+  disconnectGraceSeconds: Int!
+  disconnectingClientId: ID
   id: ID!
   players: [Player!]!
   state: GameState!
@@ -51,8 +54,10 @@ type Game {
 
 type GameEvent {
   at: DateTime!
+  deadlineAt: DateTime
   game: Game!
   gameId: ID!
+  graceSeconds: Int
   message: String
   move: Move
   player: Player
@@ -64,9 +69,11 @@ enum GameEventType {
   GAME_ENDED
   GAME_STARTED
   MOVE_PLAYED
+  PLAYER_DISCONNECTED
   PLAYER_JOINED
   PLAYER_LEFT
   PLAYER_QUIT
+  PLAYER_RECONNECTED
   REMATCH_ACCEPTED
   REMATCH_DECLINED
   REMATCH_REQUESTED

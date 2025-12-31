@@ -42,6 +42,8 @@ npm run start:dev
 
 Default port is `3001` (configurable via `PORT`).
 
+Disconnect/quit grace is configurable via `DISCONNECT_GRACE_SECONDS` (default `15`, clamped to `1..15`).
+
 ### Sample operations
 
 Create an invite game (returns a 7-char code):
@@ -120,10 +122,11 @@ subscription MatchmakingEvents($clientId: ID!) {
 
 - `CLOCK_TICK`: emitted periodically during active games (authoritative timers)
 - `PLAYER_JOINED`: emitted on invite create/join
-- `PLAYER_QUIT`: emitted on `quitGame`
+- `PLAYER_DISCONNECTED`: emitted on explicit `quitGame` and on WebSocket disconnect (includes `graceSeconds` + `deadlineAt`)
+- `PLAYER_RECONNECTED`: emitted if the player reconnects before the grace deadline
 - `MOVE_PLAYED`: emitted after a successful `makeMove`
 - `GAME_STARTED`: emitted when the 2nd player joins an invite game
-- `GAME_ENDED`: emitted on checkmate/stalemate/timeout/opponentQuit
+- `GAME_ENDED`: emitted on checkmate/stalemate/timeout/opponentQuit (grace expiry ends as resignation)
 - `REMATCH_*`: negotiation + restart events (colors swapped on `REMATCH_STARTED`)
 
 ## Project setup

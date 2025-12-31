@@ -1,4 +1,5 @@
 import { Args, ID, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
+import { withFilter } from 'graphql-subscriptions';
 import {
   CreateInviteGameInput,
   DequeueMatchmakingInput,
@@ -72,15 +73,17 @@ export class GameResolver {
     return this.gameService.quitGame(input);
   }
 
-  @Subscription(() => GameEvent, {
-    filter: (payload: any, variables: any) => payload.gameEvents.gameId === variables.gameId,
-    resolve: (payload: any) => payload.gameEvents,
-  })
+  @Subscription(() => GameEvent, { resolve: (payload: any) => payload.gameEvents })
   gameEvents(
     @Args('gameId', { type: () => ID }) _gameId: string,
     @Args('clientId', { type: () => ID }) _clientId: string,
   ) {
-    return this.gameService.asyncIteratorGameEvents();
+    return withFilter(
+      () => this.gameService.asyncIteratorGameEvents(),
+      (payload: any, variables: any) =>
+        payload.gameEvents.gameId === variables.gameId &&
+        this.gameService.isClientInGame(variables.gameId, variables.clientId),
+    )();
   }
 
   @Subscription(() => MatchmakingEvent, {
@@ -90,4 +93,3 @@ export class GameResolver {
     return this.gameService.asyncIteratorMatchmaking(clientId);
   }
 }
-
