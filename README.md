@@ -44,6 +44,11 @@ Default port is `3001` (configurable via `PORT`).
 
 Disconnect/quit grace is configurable via `DISCONNECT_GRACE_SECONDS` (default `15`, clamped to `1..15`).
 
+Handshake timeouts (not hard-coded):
+
+- `GAME_READY_TIMEOUT_SECONDS` (default `10`, clamped to `1..30`)
+- `MATCH_ACCEPT_TIMEOUT_SECONDS` (default `10`, clamped to `1..30`)
+
 ### Sample operations
 
 Create an invite game (returns a 7-char code):
@@ -68,7 +73,16 @@ mutation JoinInviteGame($code: String!) {
   joinInviteGame(input: { clientId: "c2", name: "Bob", code: $code }) {
     gameId
     playerColor
+    game { id status }
   }
+}
+```
+
+After the 2nd player joins, the game enters `READY_CHECK` and both clients must ack:
+
+```graphql
+mutation ClientReady($gameId: ID!) {
+  clientReady(input: { clientId: "c1", gameId: $gameId }) { ok }
 }
 ```
 
@@ -111,10 +125,20 @@ subscription MatchmakingEvents($clientId: ID!) {
   matchmakingEvents(clientId: $clientId) {
     type
     at
+    matchId
     gameId
     playerColor
+    errorCode
     game { id status turnColor }
   }
+}
+```
+
+When you receive `MATCH_FOUND`, each client must accept it:
+
+```graphql
+mutation AcceptMatch($matchId: ID!) {
+  acceptMatch(input: { clientId: "c1", matchId: $matchId }) { ok }
 }
 ```
 
@@ -124,9 +148,11 @@ subscription MatchmakingEvents($clientId: ID!) {
 - `PLAYER_JOINED`: emitted on invite create/join
 - `PLAYER_DISCONNECTED`: emitted on explicit `quitGame` and on WebSocket disconnect (includes `graceSeconds` + `deadlineAt`)
 - `PLAYER_RECONNECTED`: emitted if the player reconnects before the grace deadline
+- `GAME_LOAD_REQUEST`: emitted when a game needs both clients to call `clientReady` (includes `timeoutSeconds` + `deadlineAt`)
 - `MOVE_PLAYED`: emitted after a successful `makeMove`
-- `GAME_STARTED`: emitted when the 2nd player joins an invite game
+- `GAME_STARTED`: emitted only after both clients have acked `clientReady` (timers start here)
 - `GAME_ENDED`: emitted on checkmate/stalemate/timeout/opponentQuit (grace expiry ends as resignation)
+- `ERROR`: structured realtime errors (targeted via `targetClientId`)
 - `REMATCH_*`: negotiation + restart events (colors swapped on `REMATCH_STARTED`)
 
 ## Project setup

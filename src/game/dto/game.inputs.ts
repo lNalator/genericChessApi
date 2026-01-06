@@ -129,3 +129,21 @@ export class QuitGameInput {
   @Field(() => ID)
   gameId!: string;
 }
+
+@InputType()
+export class ClientReadyInput {
+  @Field(() => ID)
+  clientId!: string;
+
+  @Field(() => ID)
+  gameId!: string;
+}
+
+@InputType()
+export class AcceptMatchInput {
+  @Field(() => ID)
+  clientId!: string;
+
+  @Field(() => ID)
+  matchId!: string;
+}

@@ -2,6 +2,16 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input AcceptMatchInput {
+  clientId: ID!
+  matchId: ID!
+}
+
+input ClientReadyInput {
+  clientId: ID!
+  gameId: ID!
+}
+
 enum Color {
   BLACK
   WHITE
@@ -55,18 +65,23 @@ type Game {
 type GameEvent {
   at: DateTime!
   deadlineAt: DateTime
+  errorCode: String
   game: Game!
   gameId: ID!
   graceSeconds: Int
   message: String
   move: Move
   player: Player
+  targetClientId: ID
+  timeoutSeconds: Int
   type: GameEventType!
 }
 
 enum GameEventType {
   CLOCK_TICK
+  ERROR
   GAME_ENDED
+  GAME_LOAD_REQUEST
   GAME_STARTED
   MOVE_PLAYED
   PLAYER_DISCONNECTED
@@ -109,6 +124,7 @@ type GameState {
 enum GameStatus {
   ENDED
   IN_PROGRESS
+  READY_CHECK
   WAITING_FOR_PLAYERS
 }
 
@@ -129,16 +145,23 @@ input MakeMoveOnlineInput {
 type MatchmakingEvent {
   at: DateTime!
   clientId: ID!
+  deadlineAt: DateTime
+  errorCode: String
   game: Game
   gameId: ID
+  matchId: ID
   message: String
   playerColor: Color
+  timeControl: TimeControl
   type: MatchmakingEventType!
 }
 
 enum MatchmakingEventType {
   DEQUEUED
   ENQUEUED
+  ERROR
+  MATCH_CONFIRMED
+  MATCH_FAILED
   MATCH_FOUND
 }
 
@@ -151,6 +174,8 @@ type Move {
 }
 
 type Mutation {
+  acceptMatch(input: AcceptMatchInput!): OkResponse!
+  clientReady(input: ClientReadyInput!): OkResponse!
   createInviteGame(input: CreateInviteGameInput!): GameSession!
   dequeueMatchmaking(input: DequeueMatchmakingInput!): DequeueMatchmakingResponse!
   enqueueMatchmaking(input: EnqueueMatchmakingInput!): EnqueueMatchmakingResponse!

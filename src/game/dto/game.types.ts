@@ -24,6 +24,7 @@ export class TimeControlInput {
 
 export enum GameStatus {
   WAITING_FOR_PLAYERS = 'WAITING_FOR_PLAYERS',
+  READY_CHECK = 'READY_CHECK',
   IN_PROGRESS = 'IN_PROGRESS',
   ENDED = 'ENDED',
 }
@@ -201,10 +202,12 @@ export enum GameEventType {
   PLAYER_QUIT = 'PLAYER_QUIT',
   PLAYER_DISCONNECTED = 'PLAYER_DISCONNECTED',
   PLAYER_RECONNECTED = 'PLAYER_RECONNECTED',
+  GAME_LOAD_REQUEST = 'GAME_LOAD_REQUEST',
   MOVE_PLAYED = 'MOVE_PLAYED',
   CLOCK_TICK = 'CLOCK_TICK',
   GAME_STARTED = 'GAME_STARTED',
   GAME_ENDED = 'GAME_ENDED',
+  ERROR = 'ERROR',
   REMATCH_REQUESTED = 'REMATCH_REQUESTED',
   REMATCH_ACCEPTED = 'REMATCH_ACCEPTED',
   REMATCH_DECLINED = 'REMATCH_DECLINED',
@@ -254,11 +257,20 @@ export class GameEvent {
   @Field({ nullable: true })
   message?: string;
 
+  @Field(() => ID, { nullable: true })
+  targetClientId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  errorCode?: string | null;
+
   @Field(() => Int, { nullable: true })
-  graceSeconds?: number;
+  graceSeconds?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  timeoutSeconds?: number | null;
 
   @Field(() => GraphQLISODateTime, { nullable: true })
-  deadlineAt?: Date;
+  deadlineAt?: Date | null;
 }
 
 @ObjectType()
@@ -280,6 +292,9 @@ export enum MatchmakingEventType {
   ENQUEUED = 'ENQUEUED',
   DEQUEUED = 'DEQUEUED',
   MATCH_FOUND = 'MATCH_FOUND',
+  MATCH_CONFIRMED = 'MATCH_CONFIRMED',
+  MATCH_FAILED = 'MATCH_FAILED',
+  ERROR = 'ERROR',
 }
 
 registerEnumType(MatchmakingEventType, { name: 'MatchmakingEventType' });
@@ -296,6 +311,9 @@ export class MatchmakingEvent {
   clientId!: string;
 
   @Field(() => ID, { nullable: true })
+  matchId?: string | null;
+
+  @Field(() => ID, { nullable: true })
   gameId?: string | null;
 
   @Field(() => ColorEnum, { nullable: true })
@@ -304,8 +322,17 @@ export class MatchmakingEvent {
   @Field(() => Game, { nullable: true })
   game?: Game | null;
 
+  @Field(() => TimeControl, { nullable: true })
+  timeControl?: TimeControl | null;
+
+  @Field(() => GraphQLISODateTime, { nullable: true })
+  deadlineAt?: Date | null;
+
   @Field({ nullable: true })
   message?: string;
+
+  @Field(() => String, { nullable: true })
+  errorCode?: string | null;
 }
 
 @ObjectType()

@@ -5,15 +5,15 @@ import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GameModule } from './game/game.module';
-import { GameService } from './game/game.service';
+import { GameRealtimeService } from './game/realtime/game-realtime.service';
 
 @Module({
   imports: [
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
       imports: [GameModule],
-      inject: [GameService],
-      useFactory: (gameService: GameService) => ({
+      inject: [GameRealtimeService],
+      useFactory: (gameRealtime: GameRealtimeService) => ({
         driver: ApolloDriver,
         autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
         sortSchema: true,
@@ -25,7 +25,7 @@ import { GameService } from './game/game.service';
               if (typeof clientId === 'string') {
                 context.extra = context.extra ?? {};
                 context.extra.clientId = clientId;
-                gameService.handleClientConnected(clientId);
+                gameRealtime.handleClientConnected(clientId);
               }
               // eslint-disable-next-line no-console
               console.log('[graphql-ws] connect', { clientId });
@@ -33,7 +33,7 @@ import { GameService } from './game/game.service';
             onDisconnect: (context: any) => {
               const clientId = context?.connectionParams?.clientId ?? context?.extra?.clientId;
               if (typeof clientId === 'string') {
-                gameService.handleClientDisconnected(clientId);
+                gameRealtime.handleClientDisconnected(clientId);
               }
               // eslint-disable-next-line no-console
               console.log('[graphql-ws] disconnect', { clientId });
@@ -42,7 +42,6 @@ import { GameService } from './game/game.service';
         },
       }),
     }),
-    GameModule,
   ],
   controllers: [AppController],
   providers: [AppService],
