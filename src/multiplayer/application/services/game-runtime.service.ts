@@ -39,6 +39,10 @@ export class GameRuntimeService {
     const session = this.requireSession(cmd.gameId);
     ensurePlayerInSession(session, cmd.clientId);
 
+    if (session.state !== GameSessionState.READY_CHECK || !session.readyCheck) {
+      return { ok: true, session };
+    }
+
     if (!session.readyCheck) {
       return { ok: true, session };
     }

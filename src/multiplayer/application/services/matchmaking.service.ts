@@ -104,14 +104,6 @@ export class MatchmakingService {
     this.publishMatchProposal(whiteTicket, matchId, ColorEnum.WHITE, session.id);
     this.publishMatchProposal(blackTicket, matchId, ColorEnum.BLACK, session.id);
 
-    // Auto-ready both players to avoid ready-timeout when clients are slow to subscribe.
-    try {
-      this.runtime.clientReady({ gameId: session.id, clientId: whiteTicket.clientId });
-      this.runtime.clientReady({ gameId: session.id, clientId: blackTicket.clientId });
-    } catch (e) {
-      // ignore; ready timeout will fire if something goes wrong
-    }
-
     return { enqueued: false };
   }
 

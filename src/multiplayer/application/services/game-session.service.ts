@@ -219,6 +219,10 @@ export class GameSessionService {
     return { session, playerColor: player.color as ColorEnum };
   }
 
+  findSessionByClientId(clientId: string): GameSession | null {
+    return this.sessions.findByClientId(clientId);
+  }
+
   private scheduleReadyTimeout(session: GameSession) {
     if (!session.readyCheck?.deadlineAt) return;
     const deadlineMs = session.readyCheck.deadlineAt.getTime();
