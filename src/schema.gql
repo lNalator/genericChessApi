@@ -2,25 +2,30 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-input AcceptMatchInput {
-  clientId: ID!
-  matchId: ID!
+type BoardPositionDTO {
+  horizontal: Int!
+  vertical: Int!
 }
 
-input ClientReadyInput {
+input BoardPositionInputDTO {
+  horizontal: Int!
+  vertical: Int!
+}
+
+input ClientReadyInputDTO {
   clientId: ID!
   gameId: ID!
 }
 
-enum Color {
-  BLACK
-  WHITE
+type ClockDTO {
+  blackSeconds: Int!
+  whiteSeconds: Int!
 }
 
-input CreateInviteGameInput {
+input CreateInviteGameInputDTO {
   clientId: ID!
   name: String
-  timeControl: TimeControlInput!
+  timeControl: TimeControlInputDTO!
 }
 
 """
@@ -28,233 +33,208 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
-input DequeueMatchmakingInput {
+input DequeueMatchmakingInputDTO {
   clientId: ID!
 }
 
-type DequeueMatchmakingResponse {
+type DequeueMatchmakingResponseDTO {
   dequeued: Boolean!
 }
 
-input EnqueueMatchmakingInput {
+input EnqueueMatchmakingInputDTO {
   clientId: ID!
   name: String
-  timeControl: TimeControlInput!
+  timeControl: TimeControlInputDTO!
 }
 
-type EnqueueMatchmakingResponse {
-  enqueued: Boolean!
+type EnqueueMatchmakingResponseDTO {
+  queued: Boolean!
 }
 
-type Game {
-  boardFen: String
-  code: String
-  createdAt: DateTime!
-  disconnectDeadlineAt: DateTime
-  disconnectGraceSeconds: Int!
-  disconnectingClientId: ID
-  id: ID!
-  players: [Player!]!
-  state: GameState!
-  status: GameStatus!
-  timeControl: TimeControl!
-  turnColor: Color!
-  updatedAt: DateTime!
-}
-
-type GameEvent {
+type GameEventDTO {
   at: DateTime!
+  clock: ClockDTO
   deadlineAt: DateTime
   errorCode: String
-  game: Game!
   gameId: ID!
-  graceSeconds: Int
   message: String
-  move: Move
-  player: Player
-  targetClientId: ID
-  timeoutSeconds: Int
+  move: MoveDTO
+  playerColor: PlayerColor
+  playerId: String
+  targetClientId: String
   type: GameEventType!
 }
 
 enum GameEventType {
-  CLOCK_TICK
-  ERROR
+  CLOCK_UPDATED
+  DRAW_OFFERED
+  ERROR_OCCURRED
   GAME_ENDED
-  GAME_LOAD_REQUEST
   GAME_STARTED
-  MOVE_PLAYED
+  MOVE_APPLIED
   PLAYER_DISCONNECTED
   PLAYER_JOINED
-  PLAYER_LEFT
-  PLAYER_QUIT
+  PLAYER_READY
   PLAYER_RECONNECTED
-  REMATCH_ACCEPTED
-  REMATCH_DECLINED
-  REMATCH_REQUESTED
-  REMATCH_STARTED
+  READY_CHECK_STARTED
+  SESSION_CREATED
 }
 
-type GameOverReason {
-  agreement: Boolean
-  checkmate: Boolean
-  draw: Boolean
-  insufficientMaterial: Boolean
-  opponentQuit: Boolean
-  repetition: Boolean
-  resign: Boolean
-  stalemate: Boolean
-  timeout: Boolean
-}
-
-type GameSession {
+type GameSessionViewDTO {
   code: String
-  game: Game!
+  game: GameViewDTO!
   gameId: ID!
-  playerColor: Color!
-}
-
-type GameState {
-  hasGameEnded: Boolean!
-  players: [Player!]!
-  reason: GameOverReason!
-  winner: Player
+  playerColor: PlayerColor!
 }
 
 enum GameStatus {
+  CREATED
   ENDED
-  IN_PROGRESS
   READY_CHECK
-  WAITING_FOR_PLAYERS
+  RUNNING
+  WAITING_FOR_PLAYER
 }
 
-input JoinInviteGameInput {
+type GameViewDTO {
+  clock: ClockDTO!
+  endReason: String
+  id: ID!
+  moves: [MoveDTO!]!
+  players: [PlayerDTO!]!
+  status: GameStatus!
+  timeControl: TimeControlDTO!
+  winnerClientId: String
+}
+
+type InviteGamePayloadDTO {
+  code: ID!
+  gameId: ID!
+  playerColor: PlayerColor!
+}
+
+input JoinInviteGameInputDTO {
   clientId: ID!
   code: String!
   name: String
 }
 
-input MakeMoveOnlineInput {
-  clientId: ID!
-  from: PositionInput!
+type JoinInviteGamePayloadDTO {
   gameId: ID!
-  promotion: String
-  to: PositionInput!
+  playerColor: PlayerColor!
 }
 
-type MatchmakingEvent {
+input MakeMoveInputDTO {
+  clientId: ID!
+  from: BoardPositionInputDTO!
+  gameId: ID!
+  promotion: String
+  to: BoardPositionInputDTO!
+}
+
+type MakeMoveResponseDTO {
+  game: GameViewDTO
+  ok: Boolean!
+}
+
+type MatchmakingEventDTO {
   at: DateTime!
   clientId: ID!
   deadlineAt: DateTime
   errorCode: String
-  game: Game
   gameId: ID
   matchId: ID
   message: String
-  playerColor: Color
-  timeControl: TimeControl
+  playerColor: PlayerColor
+  timeControl: TimeControlDTO
   type: MatchmakingEventType!
 }
 
 enum MatchmakingEventType {
-  DEQUEUED
-  ENQUEUED
-  ERROR
+  ERROR_OCCURRED
   MATCH_CONFIRMED
   MATCH_FAILED
-  MATCH_FOUND
+  MATCH_PROPOSED
+  PLAYER_DEQUEUED
+  PLAYER_ENQUEUED
 }
 
-type Move {
-  byPlayerId: ID!
-  from: Position!
+type MoveDTO {
+  by: ID!
+  from: BoardPositionDTO!
   playedAt: DateTime!
   promotion: String
-  to: Position!
+  to: BoardPositionDTO!
 }
 
 type Mutation {
-  acceptMatch(input: AcceptMatchInput!): OkResponse!
-  clientReady(input: ClientReadyInput!): OkResponse!
-  createInviteGame(input: CreateInviteGameInput!): GameSession!
-  dequeueMatchmaking(input: DequeueMatchmakingInput!): DequeueMatchmakingResponse!
-  enqueueMatchmaking(input: EnqueueMatchmakingInput!): EnqueueMatchmakingResponse!
-  joinInviteGame(input: JoinInviteGameInput!): GameSession!
-  makeMove(input: MakeMoveOnlineInput!): Game!
-  quitGame(input: QuitGameInput!): OkResponse!
-  requestRematch(input: RequestRematchInput!): OkResponse!
-  respondRematch(input: RespondRematchInput!): OkResponse!
+  clientReady(input: ClientReadyInputDTO!): OkResponseDTO!
+  createInviteGame(input: CreateInviteGameInputDTO!): InviteGamePayloadDTO!
+  dequeueMatchmaking(input: DequeueMatchmakingInputDTO!): DequeueMatchmakingResponseDTO!
+  enqueueMatchmaking(input: EnqueueMatchmakingInputDTO!): EnqueueMatchmakingResponseDTO!
+  joinInviteGame(input: JoinInviteGameInputDTO!): JoinInviteGamePayloadDTO!
+  makeMove(input: MakeMoveInputDTO!): MakeMoveResponseDTO!
+  notifyDisconnect(input: NotifyDisconnectInputDTO!): OkResponseDTO!
+  notifyReconnect(input: NotifyReconnectInputDTO!): OkResponseDTO!
+  offerDraw(input: OfferDrawInputDTO!): OfferDrawResponseDTO!
+  resign(input: ResignInputDTO!): OkResponseDTO!
 }
 
-type OkResponse {
+input NotifyDisconnectInputDTO {
+  clientId: ID!
+  gameId: ID!
+}
+
+input NotifyReconnectInputDTO {
+  clientId: ID!
+  gameId: ID!
+}
+
+input OfferDrawInputDTO {
+  clientId: ID!
+  gameId: ID!
+}
+
+type OfferDrawResponseDTO {
+  accepted: Boolean!
   ok: Boolean!
 }
 
-type Piece {
-  color: Color!
-  doubleJump: Boolean
-  id: String!
-  isAlive: Boolean!
-  isChecked: Boolean
-  isFirstMove: Boolean
-  name: String!
-  position: Position!
-  value: Int
+type OkResponseDTO {
+  ok: Boolean!
 }
 
-type Player {
-  askedDraw: Boolean!
-  color: Color!
-  eatenPieces: [Piece!]!
+enum PlayerColor {
+  BLACK
+  WHITE
+}
+
+type PlayerDTO {
+  color: PlayerColor!
   id: ID!
   isPlaying: Boolean!
   name: String!
-  pieces: [Piece!]!
-  score: Int!
-  time: Int!
-}
-
-type Position {
-  horizontal: Int!
-  vertical: Int!
-}
-
-input PositionInput {
-  horizontal: Int!
-  vertical: Int!
 }
 
 type Query {
-  game(clientId: ID!, gameId: ID!): GameSession!
+  gameState(clientId: ID!, gameId: ID!): GameSessionViewDTO!
 }
 
-input QuitGameInput {
-  clientId: ID!
-  gameId: ID!
-}
-
-input RequestRematchInput {
-  clientId: ID!
-  gameId: ID!
-}
-
-input RespondRematchInput {
-  accept: Boolean!
+input ResignInputDTO {
   clientId: ID!
   gameId: ID!
 }
 
 type Subscription {
-  gameEvents(clientId: ID!, gameId: ID!): GameEvent!
-  matchmakingEvents(clientId: ID!): MatchmakingEvent!
+  gameEvents(clientId: ID!, gameId: ID!): GameEventDTO!
+  matchmakingEvents(clientId: ID!): MatchmakingEventDTO!
 }
 
-type TimeControl {
-  incrementSeconds: Int
+type TimeControlDTO {
+  incrementSeconds: Int!
   initialSeconds: Int!
 }
 
-input TimeControlInput {
-  incrementSeconds: Int
+input TimeControlInputDTO {
+  incrementSeconds: Int!
   initialSeconds: Int!
 }

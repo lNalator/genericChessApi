@@ -1,0 +1,7 @@
+export enum GameSessionState {
+  CREATED = 'CREATED',
+  WAITING_FOR_PLAYER = 'WAITING_FOR_PLAYER',
+  READY_CHECK = 'READY_CHECK',
+  RUNNING = 'RUNNING',
+  ENDED = 'ENDED',
+}

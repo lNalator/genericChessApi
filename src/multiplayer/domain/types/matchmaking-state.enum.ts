@@ -1,0 +1,9 @@
+export enum MatchmakingState {
+  IDLE = 'IDLE',
+  QUEUED = 'QUEUED',
+  MATCH_PROPOSED = 'MATCH_PROPOSED',
+  READY = 'READY',
+  IN_GAME = 'IN_GAME',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
