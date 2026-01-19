@@ -1,4 +1,4 @@
-import { GameSession } from '../../domain/entities/game-session';
+import { GameSession } from '../../../domain/entities/game-session';
 
 export const GAME_SESSION_REPOSITORY = 'GAME_SESSION_REPOSITORY';
 

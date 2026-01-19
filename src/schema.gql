@@ -2,6 +2,11 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type BestMoveDTO {
+  bestMove: String!
+  ponder: String
+}
+
 type BoardPositionDTO {
   horizontal: Int!
   vertical: Int!
@@ -216,6 +221,7 @@ type PlayerDTO {
 }
 
 type Query {
+  bestMove(fen: String!, movetimeMs: Int!): BestMoveDTO!
   gameState(clientId: ID!, gameId: ID!): GameSessionViewDTO!
 }
 

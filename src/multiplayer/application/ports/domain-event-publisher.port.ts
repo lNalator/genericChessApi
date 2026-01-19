@@ -1,5 +1,5 @@
-import { GameDomainEvent } from '../../domain/events/game-domain-event';
-import { MatchmakingDomainEvent } from '../../domain/events/matchmaking-domain-event';
+import { GameDomainEvent } from '../../../domain/events/game-domain-event';
+import { MatchmakingDomainEvent } from '../../../domain/events/matchmaking-domain-event';
 
 export const DOMAIN_EVENT_PUBLISHER = 'DOMAIN_EVENT_PUBLISHER';
 

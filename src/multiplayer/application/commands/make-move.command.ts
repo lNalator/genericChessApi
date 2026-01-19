@@ -1,4 +1,4 @@
-import { BoardPosition } from '../../domain/types/move';
+import { BoardPosition } from '../../../domain/types/move';
 
 export type MakeMoveCommand = {
   clientId: string;

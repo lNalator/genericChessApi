@@ -1,6 +1,6 @@
 import { Field, ID, ObjectType, registerEnumType } from '@nestjs/graphql';
-import { ColorEnum } from '../../domain/engine/enums/color.enum';
-import { MatchmakingDomainEventType } from '../../domain/events/matchmaking-domain-event';
+import { ColorEnum } from '../../../domain/engine/enums/color.enum';
+import { MatchmakingDomainEventType } from '../../../domain/events/matchmaking-domain-event';
 import { TimeControlDTO } from './time-control.dto';
 
 registerEnumType(MatchmakingDomainEventType, { name: 'MatchmakingEventType' });

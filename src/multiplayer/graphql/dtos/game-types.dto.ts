@@ -1,7 +1,7 @@
 import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
-import { ColorEnum } from '../../domain/engine/enums/color.enum';
-import { GameSessionState } from '../../domain/types/game-session-state.enum';
-import { GameDomainEventType } from '../../domain/events/game-domain-event';
+import { ColorEnum } from '../../../domain/engine/enums/color.enum';
+import { GameSessionState } from '../../../domain/types/game-session-state.enum';
+import { GameDomainEventType } from '../../../domain/events/game-domain-event';
 import { BoardPositionDTO } from './position.dto';
 import { TimeControlDTO } from './time-control.dto';
 

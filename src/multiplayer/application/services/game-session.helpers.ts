@@ -1,14 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
-import Player from '../../domain/engine/entities/player.model';
-import PlayerHelper from '../../domain/engine/helpers/player.helper';
-import PiecesHelper from '../../domain/engine/helpers/pieces.helper';
-import { GameSession } from '../../domain/entities/game-session';
-import { GameDomainEvent, GameDomainEventType } from '../../domain/events/game-domain-event';
-import { ColorEnum } from '../../domain/engine/enums/color.enum';
-import { GameSessionState } from '../../domain/types/game-session-state.enum';
-import { ReadyCheckState, ReadyCheckStatus } from '../../domain/types/ready-check';
-import { GameSessionTransitionType, applyGameSessionTransition } from '../../domain/state-machines/game-session-state-machine';
-import { TimeControlStrategy } from '../../domain/strategies/time-control-strategy';
+import Player from '../../../domain/engine/entities/player.model';
+import PlayerHelper from '../../../domain/engine/helpers/player.helper';
+import PiecesHelper from '../../../domain/engine/helpers/pieces.helper';
+import { GameSession } from '../../../domain/entities/game-session';
+import { GameDomainEvent, GameDomainEventType } from '../../../domain/events/game-domain-event';
+import { ColorEnum } from '../../../domain/engine/enums/color.enum';
+import { GameSessionState } from '../../../domain/types/game-session-state.enum';
+import { ReadyCheckState, ReadyCheckStatus } from '../../../domain/types/ready-check';
+import { GameSessionTransitionType, applyGameSessionTransition } from '../../../domain/state-machines/game-session-state-machine';
+import { TimeControlStrategy } from '../../../domain/strategies/time-control-strategy';
 
 export function createReadyCheck(session: GameSession, readyTimeoutSeconds: number, nowMs: number): ReadyCheckState {
   const deadline = new Date(nowMs + readyTimeoutSeconds * 1000);

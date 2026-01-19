@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MatchmakingDomainEvent } from '../../domain/events/matchmaking-domain-event';
+import { MatchmakingDomainEvent } from '../../../domain/events/matchmaking-domain-event';
 import { MatchmakingEventDTO } from '../dtos/matchmaking-types.dto';
 
 @Injectable()

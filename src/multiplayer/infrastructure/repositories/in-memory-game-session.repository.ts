@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GameSessionRepositoryPort } from '../../application/ports/game-session-repository.port';
-import { GameSession } from '../../domain/entities/game-session';
+import { GameSession } from '../../../domain/entities/game-session';
 
 @Injectable()
 export class InMemoryGameSessionRepository implements GameSessionRepositoryPort {

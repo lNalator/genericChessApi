@@ -27,13 +27,13 @@ import {
   MatchmakingEventDTO,
 } from '../dtos/matchmaking-types.dto';
 import { InviteGamePayloadDTO, JoinInviteGamePayloadDTO } from '../dtos/multiplayer-responses.dto';
-import { TimeControlConfig } from '../../domain/types/time-control';
+import { TimeControlConfig } from '../../../domain/types/time-control';
 import { GameEventMapper } from '../mappers/game-event.mapper';
 import { MatchmakingEventMapper } from '../mappers/matchmaking-event.mapper';
 import { SessionMapper } from '../mappers/session.mapper';
 import { ApolloDomainEventPublisherAdapter } from '../../infrastructure/pubsub/apollo-domain-event-publisher.adapter';
-import { GameDomainEvent } from '../../domain/events/game-domain-event';
-import { MatchmakingDomainEvent } from '../../domain/events/matchmaking-domain-event';
+import { GameDomainEvent } from '../../../domain/events/game-domain-event';
+import { MatchmakingDomainEvent } from '../../../domain/events/matchmaking-domain-event';
 
 const envLogSubscriptions = () =>
   String(process.env.MULTIPLAYER_LOG_EVENTS).toLowerCase() === 'true';

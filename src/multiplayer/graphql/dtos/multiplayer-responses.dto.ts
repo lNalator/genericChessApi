@@ -1,5 +1,5 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
-import { ColorEnum } from '../../domain/engine/enums/color.enum';
+import { ColorEnum } from '../../../domain/engine/enums/color.enum';
 
 @ObjectType()
 export class InviteGamePayloadDTO {

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { MatchmakingQueueRepositoryPort } from '../../application/ports/matchmaking-queue-repository.port';
-import { MatchProposal } from '../../domain/entities/match-proposal';
-import { MatchmakingTicket } from '../../domain/entities/matchmaking-ticket';
-import { timeControlKey } from '../../domain/types/time-control';
-import { MatchmakingState } from '../../domain/types/matchmaking-state.enum';
-import { MatchmakingTransitionType, applyMatchmakingTransition } from '../../domain/state-machines/matchmaking-state-machine';
+import { MatchProposal } from '../../../domain/entities/match-proposal';
+import { MatchmakingTicket } from '../../../domain/entities/matchmaking-ticket';
+import { timeControlKey } from '../../../domain/types/time-control';
+import { MatchmakingState } from '../../../domain/types/matchmaking-state.enum';
+import { MatchmakingTransitionType, applyMatchmakingTransition } from '../../../domain/state-machines/matchmaking-state-machine';
 
 @Injectable()
 export class InMemoryMatchmakingQueueRepository implements MatchmakingQueueRepositoryPort {

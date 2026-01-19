@@ -1,14 +1,14 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { randomInt } from 'crypto';
-import { MatchmakingTicket } from '../../domain/entities/matchmaking-ticket';
-import { MatchmakingDomainEvent, MatchmakingDomainEventType } from '../../domain/events/matchmaking-domain-event';
-import { ColorEnum } from '../../domain/engine/enums/color.enum';
-import { MatchmakingState } from '../../domain/types/matchmaking-state.enum';
-import { normalizeTimeControl } from '../../domain/types/time-control';
+import { MatchmakingTicket } from '../../../domain/entities/matchmaking-ticket';
+import { MatchmakingDomainEvent, MatchmakingDomainEventType } from '../../../domain/events/matchmaking-domain-event';
+import { ColorEnum } from '../../../domain/engine/enums/color.enum';
+import { MatchmakingState } from '../../../domain/types/matchmaking-state.enum';
+import { normalizeTimeControl } from '../../../domain/types/time-control';
 import {
   MatchmakingTransitionType,
   applyMatchmakingTransition,
-} from '../../domain/state-machines/matchmaking-state-machine';
+} from '../../../domain/state-machines/matchmaking-state-machine';
 import { EnqueueMatchmakingCommand } from '../commands/enqueue-matchmaking.command';
 import { DequeueMatchmakingCommand } from '../commands/dequeue-matchmaking.command';
 import { GameSessionService } from './game-session.service';

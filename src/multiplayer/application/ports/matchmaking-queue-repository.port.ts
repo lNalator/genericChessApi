@@ -1,5 +1,5 @@
-import { MatchmakingTicket } from '../../domain/entities/matchmaking-ticket';
-import { MatchProposal } from '../../domain/entities/match-proposal';
+import { MatchmakingTicket } from '../../../domain/entities/matchmaking-ticket';
+import { MatchProposal } from '../../../domain/entities/match-proposal';
 
 export const MATCHMAKING_QUEUE_REPOSITORY = 'MATCHMAKING_QUEUE_REPOSITORY';
 

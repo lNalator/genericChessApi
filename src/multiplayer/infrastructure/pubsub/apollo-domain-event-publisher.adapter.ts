@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { DomainEventPublisherPort } from '../../application/ports/domain-event-publisher.port';
-import { GameDomainEvent } from '../../domain/events/game-domain-event';
-import { MatchmakingDomainEvent } from '../../domain/events/matchmaking-domain-event';
+import { GameDomainEvent } from '../../../domain/events/game-domain-event';
+import { MatchmakingDomainEvent } from '../../../domain/events/matchmaking-domain-event';
 
 const GAME_CHANNEL = 'game.events';
 const MATCHMAKING_CHANNEL = 'matchmaking.events';

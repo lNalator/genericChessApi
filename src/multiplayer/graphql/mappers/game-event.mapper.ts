@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { GameDomainEvent } from '../../domain/events/game-domain-event';
-import { GameSession } from '../../domain/entities/game-session';
-import { ColorEnum } from '../../domain/engine/enums/color.enum';
+import { GameDomainEvent } from '../../../domain/events/game-domain-event';
+import { GameSession } from '../../../domain/entities/game-session';
+import { ColorEnum } from '../../../domain/engine/enums/color.enum';
 import { GameEventDTO, ClockDTO, MoveDTO } from '../dtos/game-types.dto';
 
 @Injectable()
