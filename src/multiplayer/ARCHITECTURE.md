@@ -1,30 +1,113 @@
-# Multiplayer Architecture
+# Architecture Multiplayer
 
-## Hexagonal boundaries
-- Core services (`application/services`) depend only on ports (`application/ports`) and domain types. No GraphQL/WebSocket details leak into domain logic.
-- Ports: `GameSessionRepositoryPort`, `MatchmakingQueueRepositoryPort`, `ClockPort`, `DomainEventPublisherPort`, `CodeGeneratorPort`.
-- Adapters: in-memory repositories, `SystemClockAdapter`, `InviteCodeGenerator`, and `ApolloDomainEventPublisherAdapter`. GraphQL resolver/mappers are thin adapters calling command-style services.
+Ce module suit une architecture hexagonale (Ports & Adapters). La logique metier reste dans
+`application/` et `domain/`, tandis que GraphQL, WebSocket et les stockages concrets vivent
+dans `graphql/` et `infrastructure/`.
 
-## State machines
-- **Matchmaking**: `IDLE -> QUEUED -> MATCH_PROPOSED -> READY -> IN_GAME`, with failure exits `FAILED`/`CANCELLED`. Transitions are validated in `applyMatchmakingTransition`.
-- **Game session**: `CREATED -> WAITING_FOR_PLAYER -> READY_CHECK -> RUNNING -> ENDED`. Illegal transitions throw immediately via `applyGameSessionTransition`.
+## Frontieres hexagonales
+- Les services coeur (`application/services`) ne connaissent que des ports (`application/ports`)
+  et des types du domaine (`src/domain`).
+- Ports principaux: `GameSessionRepositoryPort`, `MatchmakingQueueRepositoryPort`, `ClockPort`,
+  `DomainEventPublisherPort`, `CodeGeneratorPort`.
+- Adapters: repos in-memory, `SystemClockAdapter`, `InviteCodeGenerator`,
+  `ApolloDomainEventPublisherAdapter`, resolvers/mappers GraphQL.
 
-## Domain events → subscriptions
-- Game events: `SESSION_CREATED`, `PLAYER_JOINED`, `READY_CHECK_STARTED` (LOAD_SESSION payload), `PLAYER_READY`, `GAME_STARTED`, `MOVE_APPLIED`, `CLOCK_UPDATED`, `GAME_ENDED`, `ERROR_OCCURRED`. Published through `DomainEventPublisherPort` and exposed by the `gameEvents` subscription.
-- Matchmaking events: `PLAYER_ENQUEUED`, `PLAYER_DEQUEUED`, `MATCH_PROPOSED`, `MATCH_FAILED`, `ERROR_OCCURRED` exposed via `matchmakingEvents`.
+<details>
+<summary>Exemple: trajet d'une mutation</summary>
 
-## Time control strategy
-- Strategy pattern in `domain/strategies`. `SuddenDeathStrategy` drives authoritative clocks (initial + increment) and returns expiration information on `tick`/`onMove`.
-- `GameClockTickerService` ticks every `CLOCK_TICK_INTERVAL_MS` (configurable env) to emit `CLOCK_UPDATED` while running games stay in sync.
+1. Resolver GraphQL recoit la requete.
+2. Appel du service d'application.
+3. Le service utilise des ports (repo, publisher, clock).
+4. L'adapter concret effectue l'action (in-memory, pubsub, etc.).
 
-## Ready/ack handshake
-1. Session created or match paired → `READY_CHECK_STARTED` (LOAD_SESSION) targeted to both players, includes deadline.
-2. Each client calls `clientReady` (validated) → emits `PLAYER_READY`.
-3. When all required clients ack before deadline → `GAME_STARTED` + initial `CLOCK_UPDATED`; timers begin.
-4. If deadline passes first → `ERROR_OCCURRED` with `errorCode=READY_TIMEOUT`; game never starts.
+```
+mutation makeMove -> MultiplayerResolver
+  -> GameRuntimeService
+    -> GameSessionRepositoryPort
+    -> DomainEventPublisherPort
+```
+</details>
 
-## Manual test plan
-- **Invite flow**: createInviteGame → subscribe `gameEvents` for both → joinInviteGame with code → ensure LOAD_SESSION + clientReady from both → expect GAME_STARTED then MOVE_APPLIED + CLOCK_UPDATED on moves.
-- **Matchmaking flow**: enqueue two clients with same time control → expect MATCH_PROPOSED to each including gameId/color → subscribe `gameEvents` and send clientReady → play moves and verify mirrored events.
-- **Handshake failure**: start match/invite, have only one client call clientReady → wait past deadline → expect targeted `ERROR_OCCURRED (READY_TIMEOUT)` and no GAME_STARTED.
-- **Reliability (second player moves/timers)**: after both ready, play alternating moves; verify other client receives MOVE_APPLIED and CLOCK_UPDATED every second from ticker.
+## Machines d'etats
+- **Matchmaking**: `IDLE -> QUEUED -> MATCH_PROPOSED -> READY -> IN_GAME`
+  (sorties `FAILED`/`CANCELLED`).
+- **Game session**: `CREATED -> WAITING_FOR_PLAYER -> READY_CHECK -> RUNNING -> ENDED`.
+- Les transitions illegales declenchent une erreur immediatement.
+
+<details>
+<summary>Exemple: transition invalide</summary>
+
+Si on tente `START_GAME` alors que la session n'est pas en `READY_CHECK`,
+`applyGameSessionTransition` leve une erreur pour proteger l'etat.
+</details>
+
+## Evenements de domaine & subscriptions
+- Evenements jeu: `SESSION_CREATED`, `PLAYER_JOINED`, `READY_CHECK_STARTED`, `PLAYER_READY`,
+  `GAME_STARTED`, `MOVE_APPLIED`, `CLOCK_UPDATED`, `GAME_ENDED`, `ERROR_OCCURRED`, etc.
+- Evenements matchmaking: `PLAYER_ENQUEUED`, `PLAYER_DEQUEUED`, `MATCH_PROPOSED`,
+  `MATCH_FAILED`, `ERROR_OCCURRED`.
+- Publies via `DomainEventPublisherPort`, exposes aux clients par `gameEvents` et
+  `matchmakingEvents`.
+
+<details>
+<summary>Exemple: MOVE_APPLIED</summary>
+
+Apres un coup valide, `GameRuntimeService`:
+1) met a jour la session
+2) publie `MOVE_APPLIED`
+3) les clients recoivent l'event via subscription
+</details>
+
+## Controle du temps (Strategy)
+- Strategie de temps dans `domain/strategies`.
+- `SuddenDeathStrategy` applique un temps initial + increment.
+- `GameClockTickerService` emet `CLOCK_UPDATED` toutes les X ms (env
+  `CLOCK_TICK_INTERVAL_MS`).
+
+<details>
+<summary>Exemple: configuration</summary>
+
+```
+READY_TIMEOUT_SECONDS=20
+CLOCK_TICK_INTERVAL_MS=1000
+DISCONNECT_GRACE_SECONDS=15
+```
+</details>
+
+## Handshake READY/ACK
+1. Creation de session -> `READY_CHECK_STARTED` (deadline).
+2. Chaque client appelle `clientReady` -> `PLAYER_READY`.
+3. Tous prets avant deadline -> `GAME_STARTED` + `CLOCK_UPDATED`.
+4. Deadline depassee -> `ERROR_OCCURRED` avec `READY_TIMEOUT`.
+
+<details>
+<summary>Exemple: sequence simplifiee</summary>
+
+```
+SESSION_CREATED -> READY_CHECK_STARTED
+clientReady (A) -> PLAYER_READY
+clientReady (B) -> PLAYER_READY
+GAME_STARTED + CLOCK_UPDATED
+```
+</details>
+
+## Mode bot (Stockfish)
+- Demarrage via `startBotGame`.
+- Le client envoie un coup -> `botMove` -> Stockfish calcule -> le backend applique
+  le coup noir et renvoie l'etat du jeu.
+- Pas de timer (time control a 0/0).
+
+<details>
+<summary>Exemple: flux bot</summary>
+
+```
+startBotGame -> session RUNNING
+botMove (coup blanc) -> Stockfish bestMove -> apply move noir -> GameView
+```
+</details>
+
+## Plan de test manuel
+- **Invite**: createInviteGame -> joinInviteGame -> READY_CHECK -> clientReady -> GAME_STARTED.
+- **Matchmaking**: enqueue x2 -> MATCH_PROPOSED -> clientReady -> GAME_STARTED.
+- **Erreur ready**: un seul client ready -> READY_TIMEOUT -> ERROR_OCCURRED.
+- **Bot**: startBotGame -> botMove -> verifier que le coup noir est applique.
