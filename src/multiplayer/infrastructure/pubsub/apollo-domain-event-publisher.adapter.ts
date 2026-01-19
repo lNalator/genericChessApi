@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PubSub } from 'graphql-subscriptions';
 import { DomainEventPublisherPort } from '../../application/ports/domain-event-publisher.port';
-import { GameDomainEvent } from '../../../domain/events/game-domain-event';
+import {
+  GameDomainEvent,
+  GameDomainEventType,
+} from '../../../domain/events/game-domain-event';
 import { MatchmakingDomainEvent } from '../../../domain/events/matchmaking-domain-event';
 
 const GAME_CHANNEL = 'game.events';
@@ -15,8 +18,7 @@ export class ApolloDomainEventPublisherAdapter implements DomainEventPublisherPo
 
   publishGameEvents(events: GameDomainEvent[]): void {
     for (const ev of events) {
-      if (this.logEvents) {
-        // eslint-disable-next-line no-console
+      if (this.logEvents && ev.type !== GameDomainEventType.CLOCK_UPDATED) {
         console.log('[multiplayer][game-event]', ev.type, ev);
       }
       this.pubSub.publish(GAME_CHANNEL, { gameEvent: ev });
@@ -26,7 +28,6 @@ export class ApolloDomainEventPublisherAdapter implements DomainEventPublisherPo
   publishMatchmakingEvents(events: MatchmakingDomainEvent[]): void {
     for (const ev of events) {
       if (this.logEvents) {
-        // eslint-disable-next-line no-console
         console.log('[multiplayer][matchmaking-event]', ev.type, ev);
       }
       this.pubSub.publish(MATCHMAKING_CHANNEL, { matchmakingEvent: ev });
@@ -38,6 +39,8 @@ export class ApolloDomainEventPublisherAdapter implements DomainEventPublisherPo
   }
 
   asyncIteratorMatchmakingEvents() {
-    return this.pubSub.asyncIterator<MatchmakingDomainEvent>(MATCHMAKING_CHANNEL);
+    return this.pubSub.asyncIterator<MatchmakingDomainEvent>(
+      MATCHMAKING_CHANNEL,
+    );
   }
 }

@@ -9,7 +9,7 @@ export type GameSession = {
   id: string;
   code: string | null;
   state: GameSessionState;
-  origin: 'invite' | 'matchmaking';
+  origin: 'invite' | 'matchmaking' | 'bot';
   players: [Player, Player];
   timeControl: TimeControlConfig;
   clock: ClockState;

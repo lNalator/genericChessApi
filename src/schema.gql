@@ -17,6 +17,21 @@ input BoardPositionInputDTO {
   vertical: Int!
 }
 
+input BotMoveInputDTO {
+  clientId: ID!
+  from: BoardPositionInputDTO!
+  gameId: ID!
+  movetimeMs: Int!
+  promotion: String
+  to: BoardPositionInputDTO!
+}
+
+type BotMoveResponseDTO {
+  bestMove: String
+  game: GameViewDTO!
+  ponder: String
+}
+
 input ClientReadyInputDTO {
   clientId: ID!
   gameId: ID!
@@ -172,6 +187,7 @@ type MoveDTO {
 }
 
 type Mutation {
+  botMove(input: BotMoveInputDTO!): BotMoveResponseDTO!
   clientReady(input: ClientReadyInputDTO!): OkResponseDTO!
   createInviteGame(input: CreateInviteGameInputDTO!): InviteGamePayloadDTO!
   dequeueMatchmaking(input: DequeueMatchmakingInputDTO!): DequeueMatchmakingResponseDTO!
@@ -182,6 +198,7 @@ type Mutation {
   notifyReconnect(input: NotifyReconnectInputDTO!): OkResponseDTO!
   offerDraw(input: OfferDrawInputDTO!): OfferDrawResponseDTO!
   resign(input: ResignInputDTO!): OkResponseDTO!
+  startBotGame(input: StartBotGameInputDTO!): GameSessionViewDTO!
 }
 
 input NotifyDisconnectInputDTO {
@@ -228,6 +245,11 @@ type Query {
 input ResignInputDTO {
   clientId: ID!
   gameId: ID!
+}
+
+input StartBotGameInputDTO {
+  clientId: ID!
+  name: String
 }
 
 type Subscription {

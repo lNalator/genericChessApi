@@ -8,6 +8,7 @@ import { ReadyCheckStatus } from '../../../domain/types/ready-check';
 import { GameSessionTransitionType, applyGameSessionTransition } from '../../../domain/state-machines/game-session-state-machine';
 import { TimeControlStrategy } from '../../../domain/strategies/time-control-strategy';
 import { SuddenDeathStrategy } from '../../../domain/strategies/sudden-death.strategy';
+import { NoTimeStrategy } from '../../../domain/strategies/no-time.strategy';
 import { CLOCK_PORT, ClockPort } from '../ports/clock.port';
 import { DOMAIN_EVENT_PUBLISHER, DomainEventPublisherPort } from '../ports/domain-event-publisher.port';
 import { GAME_SESSION_REPOSITORY, GameSessionRepositoryPort } from '../ports/game-session-repository.port';
@@ -31,7 +32,8 @@ export class GameRuntimeService {
     @Inject(GAME_SESSION_REPOSITORY) private readonly sessions: GameSessionRepositoryPort,
     @Inject(DOMAIN_EVENT_PUBLISHER) private readonly publisher: DomainEventPublisherPort,
     @Inject(CLOCK_PORT) private readonly clock: ClockPort,
-    @Inject(SuddenDeathStrategy) private readonly strategy: TimeControlStrategy,
+    @Inject(SuddenDeathStrategy) private readonly defaultStrategy: TimeControlStrategy,
+    @Inject(NoTimeStrategy) private readonly noTimeStrategy: TimeControlStrategy,
   ) {}
 
   clientReady(cmd: ClientReadyCommand): { ok: boolean; session: GameSession } {
@@ -80,7 +82,7 @@ export class GameRuntimeService {
     const nowMs = this.clock.nowMs();
     session.readyCheck.status = ReadyCheckStatus.COMPLETED;
     session.state = applyGameSessionTransition(session.state, { type: GameSessionTransitionType.START_GAME });
-    session.clock = this.strategy.start(session.clock, nowMs);
+    session.clock = this.resolveStrategy(session).start(session.clock, nowMs);
     session.clock.activeColor = PlayerHelper.getPlayingPlayer(session.players).color as ColorEnum;
     session.clock.lastUpdatedMs = nowMs;
     session.updatedAt = new Date(nowMs);
@@ -108,7 +110,7 @@ export class GameRuntimeService {
     session.winnerClientId = opponent ? opponent.id : null;
     session.endReason = 'DISCONNECT';
     session.pendingDrawByClientId = null;
-    session.clock = this.strategy.pause(session.clock);
+    session.clock = this.resolveStrategy(session).pause(session.clock);
     session.updatedAt = new Date();
     this.sessions.save(session);
     this.publisher.publishGameEvents([
@@ -143,7 +145,7 @@ export class GameRuntimeService {
       session.state = GameSessionState.ENDED;
       session.winnerClientId = null;
       session.endReason = 'DRAW_AGREED';
-      session.clock = this.strategy.pause(session.clock);
+      session.clock = this.resolveStrategy(session).pause(session.clock);
       session.pendingDrawByClientId = null;
       session.updatedAt = new Date();
       this.sessions.save(session);
@@ -184,14 +186,14 @@ export class GameRuntimeService {
     if (playing.id !== player.id) throw new BadRequestException('Not your turn');
 
     const nowMs = this.clock.nowMs();
-    const tickResult = this.strategy.tick(session.clock, nowMs);
+    const tickResult = this.resolveStrategy(session).tick(session.clock, nowMs);
     session.clock = tickResult.state;
     if (tickResult.expiredColor) {
       const timeoutEvents = finishByTimeoutState(
         session,
         tickResult.expiredColor as ColorEnum,
         nowMs,
-        this.strategy,
+        this.resolveStrategy(session),
       );
       this.sessions.save(session);
       this.publisher.publishGameEvents(timeoutEvents);
@@ -201,7 +203,7 @@ export class GameRuntimeService {
 
     const notPlayingPlayer = PlayerHelper.getNotPlayingPlayer(session.players);
     applyMoveOnBoard(session, cmd, playing, notPlayingPlayer);
-    const afterMove = this.strategy.onMove(session.clock, playing.color as ColorEnum, nowMs);
+    const afterMove = this.resolveStrategy(session).onMove(session.clock, playing.color as ColorEnum, nowMs);
     session.clock = afterMove.state;
 
     const move: GameMove = {
@@ -268,7 +270,7 @@ export class GameRuntimeService {
     session.winnerClientId = opponent ? opponent.id : null;
     session.endReason = 'RESIGN';
     session.readyCheck = null;
-    session.clock = this.strategy.pause(session.clock);
+    session.clock = this.resolveStrategy(session).pause(session.clock);
     session.updatedAt = new Date();
     this.sessions.save(session);
 
@@ -291,10 +293,17 @@ export class GameRuntimeService {
     const events: GameDomainEvent[] = [];
 
     for (const session of running) {
-      const tickResult = this.strategy.tick(session.clock, nowMs);
+      const tickResult = this.resolveStrategy(session).tick(session.clock, nowMs);
       session.clock = tickResult.state;
       if (tickResult.expiredColor) {
-        events.push(...finishByTimeoutState(session, tickResult.expiredColor as ColorEnum, nowMs, this.strategy));
+        events.push(
+          ...finishByTimeoutState(
+            session,
+            tickResult.expiredColor as ColorEnum,
+            nowMs,
+            this.resolveStrategy(session),
+          ),
+        );
         this.sessions.save(session);
         this.sessions.delete(session.id);
       } else {
@@ -336,6 +345,13 @@ export class GameRuntimeService {
     const session = this.sessions.findById(gameId);
     if (!session) throw new BadRequestException('Game not found');
     return session;
+  }
+
+  private resolveStrategy(session: GameSession): TimeControlStrategy {
+    if (session.timeControl.initialSeconds === 0 && session.timeControl.incrementSeconds === 0) {
+      return this.noTimeStrategy;
+    }
+    return this.defaultStrategy;
   }
 
   private publishReadyError(session: GameSession, clientId: string, errorCode: string, message: string) {
